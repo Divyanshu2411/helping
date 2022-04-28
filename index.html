@@ -373,6 +373,50 @@ for i in range(epoch):
 <hr>
 <br>
 
+<strong>Perceptron Tars ANDNOT</strong>
+<pre>
+    def activation(yin,theta):
+    if yin>0:
+        return 1
+    elif yin &lt; 0:
+        return -1
+    else:
+        return 0
+
+x1 = [1, 1, -1, -1]
+x2 = [1, -1, 1, -1]
+t = [-1,1,-1,-1]
+bias, w1,w2=0,0,0
+alpha, theta=1, 0
+numEpoch = int(input("Enter number of epochs: "))
+
+for i in range(numEpoch):
+    nowtchange =True
+    print("For Epoch:", i + 1)
+    for j in range(4):
+        sum = 0
+        sum = sum + x1[j]*w1 + x2[j]*w2
+        yin = bias+sum
+        y = activation(yin,theta)
+        if t[j] != y:
+            nowtchange = False
+            w1 = w1 + alpha*t[j]*x1[j]
+            w2 = w2 + alpha*t[j]*x2[j]
+            bias = bias + alpha*t[j]
+            print("Updated Weights are")
+            print(f'w1: {w1}, w2: {w2}, b: {bias}')
+        else:
+            print("No change in Weights")
+            print(f'w1: {w1}, w2: {w2}, b: {bias}')
+    if nowtchange:
+        print("***********************No weight change in entire epoch***************************")
+
+        break
+
+
+
+
+</pre>
 
 <strong>Perceptron ANDNOT</strong>
 <pre>
