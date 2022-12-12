@@ -20,6 +20,725 @@
 <body>
     <div>
 
+        <strong> fork</strong>
+        <pre>
+                #include <stdio.h>
+                #include <stdlib.h>
+                #include <sys/types.h>
+                #include <sys/wait.h>
+                #include <unistd.h>
+                int main() {
+                pid_t pid = fork();
+                if(pid == 0) {
+                printf("Child => PPID: %d PID: %d\n", getppid(), 
+                getpid());
+                exit(EXIT_SUCCESS);
+                }
+                else if(pid > 0) {
+                printf("Parent => PID: %d\n", getpid());
+                printf("Waiting for child process to finish.\n");
+                wait(NULL);
+                printf("Child process finished.\n");
+                }
+                else {
+                printf("Unable to create child process.\n");
+                }
+                return EXIT_SUCCESS;
+                }
+        </pre>
+
+        <strong> parentChildIPC </strong>
+        <pre>
+                #include<stdio.h>
+                #include<unistd.h>
+                int main() {
+                 int pipefds[2];
+                 int returnstatus;
+                 int pid;
+                 char writemessages[2][20]={"Divyanshu", "2019UIT3020"};
+                 char readmessage[20];
+                 returnstatus = pipe(pipefds);
+                 if (returnstatus == -1) {
+                 printf("Unable to create pipe\n");
+                 return 1;
+                 }
+                 pid = fork();
+                 printf("pid: %d \n",pid);
+                 // Child process
+                 if (pid == 0) {
+                 read(pipefds[0], readmessage, sizeof(readmessage));
+                 printf("Child Process - Reading from pipe – Message 1 is %s\n", readmessage);
+                 read(pipefds[0], readmessage, sizeof(readmessage));
+                 printf("Child Process - Reading from pipe – Message 2 is %s\n", readmessage);
+                 } else { //Parent process
+                 printf("Parent Process - Writing to pipe - Message 1 is %s\n", writemessages[0]);
+                 write(pipefds[1], writemessages[0], sizeof(writemessages[0]));
+                 printf("Parent Process - Writing to pipe - Message 2 is %s\n", writemessages[1]);
+                 write(pipefds[1], writemessages[1], sizeof(writemessages[1]));
+                 }
+                 return 0;
+                }
+        </pre>
+
+        <strong> twoChildIPC</strong>
+        <pre>
+                #include <unistd.h>
+                #include <stdio.h>
+                int main()
+                {
+                int pipefds[2];
+                int returnstatus;
+                char writemessages[20]="Divyanshu";
+                char readmessage[20];
+                returnstatus = pipe(pipefds);
+                 
+                 if (returnstatus == -1) {
+                 printf("Unable to create pipe\n");
+                 return 1;
+                 }
+                 // Creating first child
+                int n1 = fork();
+                
+                if (n1 > 0) //finding parent ID
+                {
+                    printf("parent\n");
+                    printf("n1:\t %d \n", n1);
+                    printf("my id (parent) is %d \n", getpid());
+                    waitpid(n1, NULL, 0);
+                    // Creating second child. 
+                    int n2 = fork(); 
+                    if(n2==0){
+                        printf("second child\n");
+                        printf("n2: \t %d \n", n2);
+                        printf("my id is (Second child) %d \n", getpid());
+                        printf("my parentid ( for second child)is %d \n", getppid());
+                        
+                        read(pipefds[0], readmessage, sizeof(readmessage));
+                        printf("Reading from pipe – Message 1 is %s\n", readmessage);
+                    }
+                    else{
+                        waitpid(n2, NULL, 0);
+                    }   
+                
+                }
+                else if (n1 == 0) //child 1 writing to pipe
+                {
+                    printf("First child\n");
+                    printf("n1:\t %d \n", n1);
+                    printf("my id is (First child) %d \n", getpid());
+                    printf("my parentid (for first child) is %d \n", getppid());
+                    printf("Writing to pipe - Message 1 is %s\n", writemessages);
+                    write(pipefds[1], writemessages, sizeof(writemessages));
+                }
+                
+                return 0;
+                }
+                
+        </pre>
+
+        <strong> parentChild2way</strong>
+        <pre>
+                #include<stdio.h>
+                #include<unistd.h>
+                #include<stdlib.h>
+                #include<string.h>
+                int main() {
+                int pipefds1[2], pipefds2[2];
+                int returnstatus1, returnstatus2;
+                int pid;
+                char pipe1writemessage[20]; 
+                char pipe2writemessage[20];
+                char readmessage[20];
+                returnstatus1 = pipe(pipefds1);
+                
+                if (returnstatus1 == -1) {
+                printf("Unable to create pipe 1 \n");
+                return 1;
+                }
+                returnstatus2 = pipe(pipefds2);
+                if (returnstatus2 == -1) {
+                printf("Unable to create pipe 2 \n");
+                return 1;
+                }
+                pid = fork();
+                int pip1=1;
+                while(pip1) {
+                if (pid != 0){
+                close(pipefds1[0]);
+                close(pipefds2[1]);
+                
+                
+                printf("In Parent: Writing to pipe 1\n");
+                scanf("%s",pipe1writemessage);
+                printf("– Message is %s\n",pipe1writemessage); 
+                if(strcmp(pipe1writemessage,"STOP")==0) break;
+                
+                write(pipefds1[1], pipe1writemessage, sizeof(pipe1writemessage));
+                read(pipefds2[0], readmessage, sizeof(readmessage));
+                printf("In Parent: Reading from pipe 2 – Message is %s\n", readmessage);
+                
+                } 
+                
+                else { //child process
+                close(pipefds1[1]); // Close the unwanted pipe1 write side
+                close(pipefds2[0]); // Close the unwanted pipe2 read side
+                read(pipefds1[0], readmessage, sizeof(readmessage));
+                printf("In Child: Reading from pipe 1 – Message is %s\n", readmessage);
+                
+                printf("In Child: Writing to pipe 2 \n");
+                scanf("%s",pipe2writemessage);
+                printf("– Message is %s\n",pipe2writemessage); 
+                if(strcmp(pipe2writemessage,"STOP")==0) break;
+                write(pipefds2[1], pipe2writemessage, sizeof(pipe2writemessage));
+                
+                }
+                }
+                return 0;
+                }
+        </pre>
+
+        <strong>2child2way </strong>
+        <pre>
+            #include<stdio.h>
+                #include<unistd.h>
+                #include<stdlib.h>
+                #include<string.h>
+                int main() {
+                 int pipefds1[2], pipefds2[2];
+                 int returnstatus1, returnstatus2;
+                 int pid;
+                 char pipe1writemessage[20];
+                 char pipe2writemessage[20];
+                 char readmessage[20];
+                 returnstatus1 = pipe(pipefds1);
+                 
+                 if (returnstatus1 == -1) {
+                 printf("Unable to create pipe 1 \n");
+                 return 1;
+                 }
+                 returnstatus2 = pipe(pipefds2);
+                 
+                 if (returnstatus2 == -1) {
+                 printf("Unable to create pipe 2 \n");
+                 return 1;
+                 }
+                 int n1 = fork();
+                 int n2=fork();
+                 
+                 if (n1 > 0 && n2 > 0) {
+                    
+                 printf("parent\n");
+                 printf("%d %d \n", n1, n2);
+                 printf(" my id (parent) is %d \n", getpid());
+                 printf("_____________________\n");
+                //  waitpid(n1, NULL, 0);
+                //  waitpid(n2, NULL, 0);
+                 }
+                 int pip1=1;
+                while(pip1) {
+                 if (n1> 0 && n2 ==0){ // child 2
+                 printf("parent id %d\n",getppid());
+                 close(pipefds1[0]); // Close the unwanted pipe1 read side
+                 close(pipefds2[1]); // Close the unwanted pipe2 write side
+                 
+                 printf("In Child 2: Writing to pipe 1 – Message is \n");
+                 scanf("%s", pipe1writemessage);
+                 if(strcmp(pipe1writemessage,"STOP")==0) {
+                    close(pipefds1[1]); 
+                    close(pipefds2[0]); 
+                    break;
+                 }
+                 write(pipefds1[1], pipe1writemessage, sizeof(pipe1writemessage));
+                 read(pipefds2[0], readmessage, sizeof(readmessage));
+                 printf("In Child 2: Reading from pipe 2 – Message is %s\n", readmessage);
+                 
+                 }
+                 else if(n1==0 && n2>0) { //child1 process
+                 printf("parent id %d\n",getppid());
+                 close(pipefds1[1]); // Close the unwanted pipe1 write side
+                 close(pipefds2[0]); // Close the unwanted pipe2 read side
+                 read(pipefds1[0], readmessage, sizeof(readmessage));
+                 printf("In Child 1: Reading from pipe 1 – Message is %s\n", readmessage);
+                 printf("In Child 1: Writing to pipe 2 – Message is \n");
+                 scanf("%s", pipe2writemessage);
+                 if(strcmp(pipe2writemessage,"STOP")==0) {
+                    close(pipefds1[0]); 
+                    close(pipefds2[1]); 
+                 
+                    break;
+                 }
+                 write(pipefds2[1], pipe2writemessage, sizeof(pipe2writemessage));
+                 }
+                }
+                 return 0;
+                }
+        </pre>
+        <strong> FIFO user1</strong>
+        <pre>
+                #include <stdio.h>
+                #include <string.h>
+                #include <fcntl.h>
+                #include <sys/stat.h>
+                #include <sys/types.h>
+                #include <unistd.h>
+                int main()
+                {
+                int fd;
+                // FIFO file path
+                char * myfifo = "/tmp/myfifo";
+                // Creating the named file(FIFO)
+                // mkfifo(<pathname>, <permission>)
+                mkfifo(myfifo, 0666);
+                char arr1[80], arr2[80];
+                while (1)
+                {
+                // Open FIFO for write only
+                
+                fd = open(myfifo, O_WRONLY);
+                // Take an input arr2ing from user.
+                // 80 is maximum length
+                fgets(arr2, 80, stdin);
+                // Write the input arr2ing on FIFO
+                // and close it
+                
+                if(strlen(arr2)>=4 && arr2[0]=='S'&& arr2[1]=='T' && arr2[2]=='O' && arr2[3]=='P') {
+                    return 0;
+                }
+                write(fd, arr2, strlen(arr2)+1);
+                close(fd);
+                
+                // Open FIFO for Read only
+                fd = open(myfifo, O_RDONLY);
+                // Read from FIFO
+                read(fd, arr1, sizeof(arr1));
+                // Print the read message
+                printf("User2: %s\n", arr1);
+                close(fd);
+                }
+                return 0;
+                }
+                
+        </pre>
+        <strong> FIFO user2 </strong>
+        <pre>
+                #include <stdio.h>
+                #include <string.h>
+                #include <fcntl.h>
+                #include <sys/stat.h>
+                #include <sys/types.h>
+                #include <unistd.h>
+                int main()
+                {
+                int fd1;
+                // FIFO file path
+                char * myfifo = "/tmp/myfifo";
+                // Creating the named file(FIFO)
+                // mkfifo(<pathname>,<permission>)
+                mkfifo(myfifo, 0666);
+                char str1[80], str2[80];
+                while (1)
+                {
+                // First open in read only and read
+                
+                fd1 = open(myfifo,O_RDONLY);
+                read(fd1, str1, 80);
+                // Print the read string and close
+                printf("User1: %s\n", str1);
+                close(fd1);
+                // Now open in write mode and write
+                // string taken from user.
+                fd1 = open(myfifo,O_WRONLY);
+                fgets(str2, 80, stdin);
+                if(strlen(str2)>=4 && str2[0]=='S'&& str2[1]=='T' && str2[2]=='O' && str2[3]=='P') {
+                    return 0;
+                }
+                write(fd1, str2, strlen(str2)+1);
+                close(fd1);
+                }
+                return 0;
+                }
+        </pre>
+        <strong> Message Queue reader</strong>
+        <pre>
+            // C Program for Message Queue (Reader Process)
+            #include <stdio.h>
+            #include <sys/ipc.h>
+            #include <sys/msg.h>
+            // structure for message queue
+            struct mesg_buffer {
+            long mesg_type;
+            char mesg_text[100];
+            } message;
+            int main()
+            {
+            key_t key;
+            int msgid;
+            // ftok to generate unique key
+            key = ftok("progfile", 65);
+            // msgget creates a message queue
+            // and returns identifier
+            msgid = msgget(key, 0666 | IPC_CREAT);
+            // msgrcv to receive message
+
+            msgrcv(msgid, &message, sizeof(message), 1, 0);
+            // display the message
+            printf("Data Received is : %s \n",
+            message.mesg_text);
+            // to destroy the message queue
+            msgctl(msgid, IPC_RMID, NULL);
+            return 0;
+            }
+        </pre>
+        <strong> Message Queue Writer</strong>
+        <pre>
+                #include <stdio.h>
+                #include <sys/ipc.h>
+                #include <sys/msg.h>
+                #define MAX 10
+                // structure for message queue
+                struct mesg_buffer {
+                long mesg_type;
+                char mesg_text[100];
+                } message;
+                int main()
+                {
+                key_t key;
+                int msgid;
+                
+                // ftok to generate unique key
+                key = ftok("progfile", 65);
+                // msgget creates a message queue
+                // and returns identifier
+                msgid = msgget(key, 0666 | IPC_CREAT);
+                message.mesg_type = 1;
+                printf("Write Data : ");
+                fgets(message.mesg_text,MAX,stdin);
+                // msgsnd to send message
+                msgsnd(msgid, &message, sizeof(message), 0);
+                // display the message
+                printf("Data send is : %s \n", message.mesg_text);
+                return 0;
+                }
+        </pre>
+
+        <strong>client Socket </strong>
+        <pre>
+            #include <arpa/inet.h>
+            #include <stdio.h>
+            #include <string.h>
+            #include <sys/socket.h>
+            #include <unistd.h>
+            #define PORT 8080
+            
+            int main(int argc, char const* argv[])
+            {
+                int sock = 0, valread, client_fd;
+                struct sockaddr_in serv_addr;
+                printf("Enter Message from Client: \t");
+                char clientMessage[80];
+                scanf("%s",clientMessage);
+
+                char buffer[1024] = { 0 };
+                if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+                    printf("\n Socket creation error \n");
+                    return -1;
+                }
+            
+                serv_addr.sin_family = AF_INET;
+                serv_addr.sin_port = htons(PORT);
+            
+                // Convert IPv4 and IPv6 addresses from text to binary
+                // form
+                if (inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr)
+                    <= 0) {
+                    printf(
+                        "\nInvalid address/ Address not supported \n");
+                    return -1;
+                }
+            
+                if ((client_fd
+                    = connect(sock, (struct sockaddr*)&serv_addr,
+                            sizeof(serv_addr)))
+                    < 0) {
+                    printf("\nConnection Failed \n");
+                    return -1;
+                }
+                send(sock, clientMessage, strlen(clientMessage), 0);
+                printf("Client message sent\n");
+                valread = read(sock, buffer, 1024);
+                printf("Message from server: %s\n", buffer);
+            
+                // closing the connected socket
+                close(client_fd);
+                return 0;
+            }
+        </pre>
+
+        <strong>Socket Server </strong>
+        <pre>
+            #include <netinet/in.h>
+        #include <stdio.h>
+        #include <stdlib.h>
+        #include <string.h>
+        #include <sys/socket.h>
+        #include <unistd.h>
+        #define PORT 8080
+        int main(int argc, char const* argv[])
+        {
+            int server_fd, new_socket, valread;
+            struct sockaddr_in address;
+            int opt = 1;
+            int addrlen = sizeof(address);
+            char buffer[1024] = { 0 };
+            char serverMessage[80];
+            printf("Enter Message from Server: \t");
+            scanf("%s",serverMessage);
+
+
+        
+            // Creating socket file descriptor
+            if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+                perror("socket failed");
+                exit(EXIT_FAILURE);
+            }
+        
+            // Forcefully attaching socket to the port 8080
+            if (setsockopt(server_fd, SOL_SOCKET,
+                        SO_REUSEADDR | SO_REUSEPORT, &opt,
+                        sizeof(opt))) {
+                perror("setsockopt");
+                exit(EXIT_FAILURE);
+            }
+            address.sin_family = AF_INET;
+            address.sin_addr.s_addr = INADDR_ANY;
+            address.sin_port = htons(PORT);
+        
+            // Forcefully attaching socket to the port 8080
+            if (bind(server_fd, (struct sockaddr*)&address,
+                    sizeof(address))
+                < 0) {
+                perror("bind failed");
+                exit(EXIT_FAILURE);
+            }
+            if (listen(server_fd, 3) < 0) {
+                perror("listen");
+                exit(EXIT_FAILURE);
+            }
+            if ((new_socket
+                = accept(server_fd, (struct sockaddr*)&address,
+                        (socklen_t*)&addrlen))
+                < 0) {
+                perror("accept");
+                exit(EXIT_FAILURE);
+            }
+            valread = read(new_socket, buffer, 1024);
+            printf("Message from client: %s\n", buffer);
+            send(new_socket, serverMessage, strlen(serverMessage), 0);
+            printf("Server message sent\n");
+        
+            // closing the connected socket
+            close(new_socket);
+            // closing the listening socket
+            shutdown(server_fd, SHUT_RDWR);
+            return 0;
+        }
+        </pre>
+        
+        <strong>Socket Multiple Server </strong>
+        <pre>
+            //Example code: A simple server side code, which echos back the received message.
+            //Handle multiple socket connections with select and fd_set on Linux 
+            #include <stdio.h> 
+            #include <string.h>   //strlen 
+            #include <stdlib.h> 
+            #include <errno.h> 
+            #include <unistd.h>   //close 
+            #include <arpa/inet.h>    //close 
+            #include <sys/types.h> 
+            #include <sys/socket.h> 
+            #include <netinet/in.h> 
+            #include <sys/time.h> //FD_SET, FD_ISSET, FD_ZERO macros 
+                
+            #define TRUE   1 
+            #define FALSE  0 
+            #define PORT 8080 
+                
+            int main(int argc , char *argv[])  
+            {  
+                int opt = TRUE;  
+                int master_socket , addrlen , new_socket , client_socket[30] , 
+                    max_clients = 30 , activity, i , valread , sd;  
+                int max_sd;  
+                struct sockaddr_in address;  
+                    
+                char buffer[1025];  //data buffer of 1K 
+                    
+                //set of socket descriptors 
+                fd_set readfds;  
+                    
+                //a message 
+                char *message = "ECHO Daemon v1.0 \r\n";  
+                
+                //initialise all client_socket[] to 0 so not checked 
+                for (i = 0; i < max_clients; i++)  
+                {  
+                    client_socket[i] = 0;  
+                }  
+                    
+                //create a master socket 
+                if( (master_socket = socket(AF_INET , SOCK_STREAM , 0)) < 0)  
+                {  
+                    perror("socket failed");  
+                    exit(EXIT_FAILURE);  
+                }  
+                
+                //set master socket to allow multiple connections , 
+                //this is just a good habit, it will work without this 
+                if( setsockopt(master_socket, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, 
+                    sizeof(opt)) < 0 )  
+                {  
+                    perror("setsockopt");  
+                    exit(EXIT_FAILURE);  
+                }  
+                
+                //type of socket created 
+                address.sin_family = AF_INET;  
+                address.sin_addr.s_addr = INADDR_ANY;  
+                address.sin_port = htons( PORT );  
+                    
+                //bind the socket to localhost port 8888 
+                if (bind(master_socket, (struct sockaddr *)&address, sizeof(address))<0)  
+                {  
+                    perror("bind failed");  
+                    exit(EXIT_FAILURE);  
+                }  
+                printf("Listener on port %d \n", PORT);  
+                    
+                //try to specify maximum of 3 pending connections for the master socket 
+                if (listen(master_socket, 3) < 0)  
+                {  
+                    perror("listen");  
+                    exit(EXIT_FAILURE);  
+                }  
+                    
+                //accept the incoming connection 
+                addrlen = sizeof(address);  
+                puts("Waiting for connections ...");  
+                    
+                while(TRUE)  
+                {  
+                    //clear the socket set 
+                    FD_ZERO(&readfds);  
+                
+                    //add master socket to set 
+                    FD_SET(master_socket, &readfds);  
+                    max_sd = master_socket;  
+                        
+                    //add child sockets to set 
+                    for ( i = 0 ; i < max_clients ; i++)  
+                    {  
+                        //socket descriptor 
+                        sd = client_socket[i];  
+                            
+                        //if valid socket descriptor then add to read list 
+                        if(sd > 0)  
+                            FD_SET( sd , &readfds);  
+                            
+                        //highest file descriptor number, need it for the select function 
+                        if(sd > max_sd)  
+                            max_sd = sd;  
+                    }  
+                
+                    //wait for an activity on one of the sockets , timeout is NULL , 
+                    //so wait indefinitely 
+                    activity = select( max_sd + 1 , &readfds , NULL , NULL , NULL);  
+                
+                    if ((activity < 0) && (errno!=EINTR))  
+                    {  
+                        printf("select error");  
+                    }  
+                        
+                    //If something happened on the master socket , 
+                    //then its an incoming connection 
+                    if (FD_ISSET(master_socket, &readfds))  
+                    {  
+                        if ((new_socket = accept(master_socket, 
+                                (struct sockaddr *)&address, (socklen_t*)&addrlen))<0)  
+                        {  
+                            perror("accept");  
+                            exit(EXIT_FAILURE);  
+                        }  
+                        
+                        //inform user of socket number - used in send and receive commands 
+                        printf("New connection , socket fd is %d , ip is : %s , port : %d \n" , new_socket , inet_ntoa(address.sin_addr), ntohs(address.sin_port));  
+                    
+                        //send new connection greeting message 
+                        if( send(new_socket, message, strlen(message), 0) != strlen(message) )  
+                        {  
+                            perror("send");  
+                        }  
+                            
+                        puts("Welcome message sent successfully");  
+                            
+                        //add new socket to array of sockets 
+                        for (i = 0; i < max_clients; i++)  
+                        {  
+                            //if position is empty 
+                            if( client_socket[i] == 0 )  
+                            {  
+                                client_socket[i] = new_socket;  
+                                printf("Adding to list of sockets as %d\n" , i);  
+                                    
+                                break;  
+                            }  
+                        }  
+                    }  
+                        
+                    //else its some IO operation on some other socket
+                    for (i = 0; i < max_clients; i++)  
+                    {  
+                        sd = client_socket[i];  
+                            
+                        if (FD_ISSET( sd , &readfds))  
+                        {  
+                            //Check if it was for closing , and also read the 
+                            //incoming message 
+                            if ((valread = read( sd , buffer, 1024)) == 0)  
+                            {  
+                                //Somebody disconnected , get his details and print 
+                                getpeername(sd , (struct sockaddr*)&address , \
+                                    (socklen_t*)&addrlen);  
+                                printf("Host disconnected , ip %s , port %d \n" , 
+                                    inet_ntoa(address.sin_addr) , ntohs(address.sin_port));  
+                                    
+                                //Close the socket and mark as 0 in list for reuse 
+                                close( sd );  
+                                client_socket[i] = 0;  
+                            }  
+                                
+                            //Echo back the message that came in 
+                            else 
+                            {  
+                                //set the string terminating NULL byte on the end 
+                                //of the data read 
+                                buffer[valread] = '\0';  
+                                send(sd , buffer , strlen(buffer) , 0 );  
+                            }  
+                        }  
+                    }  
+                }  
+                    
+                return 0;  
+            }  
+
+        </pre>
+
+        <strong> </strong>
+        <pre>
+
+        </pre>
+
+
         <strong> Outlier Detection</strong>
         <pre>
 
